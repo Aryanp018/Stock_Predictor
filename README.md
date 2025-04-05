@@ -103,7 +103,7 @@ A plot of actual vs. predicted prices will be displayed, with the LSTM tracking 
 
 ## 🔁 Predict a Different Stock
 
-To switch from MSFT to AAPL, modify the function call:
+To use this for your stock of choice change the MSFT to your symbol of choice, modify the function call:
 
 ```python
 main('AAPL', api_key)
@@ -116,10 +116,8 @@ main('AAPL', api_key)
 ## 📂 Code Structure
 
 ```
-├── stock_predictor.py          # Main script
-├── stock_predictor.ipynb       # Optional Jupyter version
+├── STOCK.ipynb                 # Main script
 ├── README.md                   # Project README
-└── requirements.txt (optional)
 ```
 
 - **StockPredictor class**: Handles data fetching, preprocessing, training, and prediction
@@ -177,11 +175,6 @@ Contributions are welcome!
 4. Push to the branch: `git push origin feature/my-feature`
 5. Open a pull request
 
----
-
-## 📜 License
-
-This project is licensed under the **MIT License**. See the `LICENSE` file for details.
 
 ---
 
