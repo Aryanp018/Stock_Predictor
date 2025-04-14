@@ -40,6 +40,10 @@ st.markdown("""
         padding-bottom: 0.2em;
         margin-top: 1em;
     }
+    /* Prevent hover effects from changing text visibility */
+    h1:hover, h2:hover, .stMarkdown:hover, .stMarkdown p:hover, .stMarkdown div:hover {
+        color: inherit !important;
+    }
     /* Main page text */
     .stMarkdown, .stMarkdown p, .stMarkdown div {
         color: #333 !important;
@@ -124,6 +128,9 @@ st.markdown("""
         border-radius: 8px;
     }
     .stSidebar .stExpander > div > div > div {
+        color: #333 !important;
+    }
+    .stSidebar .stExpander > div > div > div:hover {
         color: #333 !important;
     }
     /* Alerts */
@@ -431,18 +438,18 @@ with st.sidebar:
     
     with st.expander("Help & FAQ"):
         st.markdown("""
-        **How to get an API key?**
-        - Visit [alphavantage.co](https://www.alphavantage.co) and sign up for a free key.
+        **How to get an API key?**  
+        Visit [alphavantage.co](https://www.alphavantage.co) and sign up for a free key.
         
-        **What symbols are valid?**
-        - Use stock tickers like MSFT (Microsoft), NVDA (NVIDIA), or AAPL (Apple).
+        **What symbols are valid?**  
+        Use stock tickers like MSFT (Microsoft), NVDA (NVIDIA), or AAPL (Apple).
         
-        **Why does it take a few minutes?**
-        - The app fetches fresh data and trains an LSTM model, which takes ~1–3 minutes.
+        **Why does it take a few minutes?**  
+        The app fetches fresh data and trains an LSTM model, which takes ~1–3 minutes.
         
-        **Error messages?**
-        - **Invalid symbol**: Check the ticker (e.g., MSFT, not Microsoft).
-        - **Rate limit**: Wait a minute due to Alpha Vantage’s 5 requests/min limit.
+        **Error messages?**  
+        - **Invalid symbol**: Check the ticker (e.g., MSFT, not Microsoft).  
+        - **Rate limit**: Wait a minute due to Alpha Vantage’s 5 requests/min limit.  
         - **Other errors**: Ensure your API key is correct or try again later.
         """)
 
