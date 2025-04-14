@@ -15,6 +15,94 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Custom CSS for UI styling
+st.markdown("""
+    <style>
+    /* General styling */
+    body {
+        background-color: #F5F6F5;
+    }
+    .stApp {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    h1 {
+        color: #003087;
+        font-size: 2.5em;
+        text-align: center;
+        margin-bottom: 0.5em;
+    }
+    h2 {
+        color: #003087;
+        font-size: 1.8em;
+        border-bottom: 2px solid #28A745;
+        padding-bottom: 0.2em;
+    }
+    /* Input form */
+    .stTextInput > div > div > input {
+        border: 2px solid #003087;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 1.1em;
+    }
+    .stButton > button {
+        background-color: #28A745;
+        color: white;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-size: 1.2em;
+        border: none;
+        transition: background-color 0.3s;
+    }
+    .stButton > button:hover {
+        background-color: #218838;
+    }
+    /* Output cards */
+    .price-card {
+        background-color: white;
+        border: 1px solid #003087;
+        border-radius: 8px;
+        padding: 15px;
+        margin: 10px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    .price-card h3 {
+        color: #003087;
+        margin: 0;
+        font-size: 1.4em;
+    }
+    .price-card p {
+        color: #333;
+        font-size: 1.6em;
+        margin: 5px 0 0;
+        font-weight: bold;
+    }
+    /* Plot */
+    .plot-container {
+        background-color: white;
+        border: 1px solid #003087;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    /* Sidebar */
+    .stSidebar {
+        background-color: #FFFFFF;
+        border-right: 1px solid #003087;
+    }
+    .stSidebar h3 {
+        color: #003087;
+    }
+    /* Alerts */
+    .stAlert {
+        border-radius: 8px;
+        font-size: 1.1em;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # StockPredictor class (LSTM only)
 class StockPredictor:
     def __init__(self, stock_symbol, api_key, look_back=60, prediction_days=1, max_retries=3):
@@ -156,56 +244,56 @@ class StockPredictor:
 
 # Streamlit UI
 st.title("📈 Stock Price Predictor")
-st.write("Enter a stock symbol and Alpha Vantage API key to get a 1-day-ahead price prediction.")
+st.markdown("Predict tomorrow's stock price with advanced AI. Enter a symbol and API key below.", unsafe_allow_html=True)
 
-# Sidebar instructions
-st.sidebar.markdown("""
-### How to Use
-1. Get a free API key from [Alpha Vantage](https://www.alphavantage.co).
-2. Enter a stock symbol (e.g., MSFT, NVDA) and your API key.
-3. Click "Predict" to see results in ~1–3 minutes.
-""")
+# Input form
+st.markdown("### Enter Stock Details")
+col1, col2 = st.columns(2)
+with col1:
+    symbol = st.text_input("Stock Symbol", value="MSFT", help="e.g., MSFT, NVDA, AAPL")
+with col2:
+    api_key = st.text_input("Alpha Vantage API Key", type="password", help="Get a free key at alphavantage.co")
 
-# User inputs
-symbol = st.text_input("Stock Symbol (e.g., MSFT, NVDA):", "MSFT")
-api_key = st.text_input("Alpha Vantage API Key:", type="password")
-
-if st.button("Predict"):
+# Predict button
+if st.button("Predict", key="predict_button"):
     if not symbol or not api_key:
         st.error("Please provide both a stock symbol and API key.")
     else:
-        with st.spinner("Fetching data and running model..."):
+        with st.spinner("Processing..."):
             try:
-                # Progress bar
-                progress = st.progress(0)
+                # Progress messages
+                status = st.empty()
+                status.markdown("🔄 Fetching stock data...")
                 predictor = StockPredictor(symbol, api_key, prediction_days=1)
                 
-                # Step 1: Fetch data
-                progress.progress(0.33)
                 if not predictor.get_stock_data():
+                    status.empty()
                     st.error(f"Failed to fetch data for {symbol}. Check symbol or API key.")
                     st.stop()
                 
-                # Step 2: Add indicators
-                progress.progress(0.66)
+                status.markdown("🔄 Computing technical indicators...")
                 if not predictor.add_technical_indicators():
+                    status.empty()
                     st.error("Failed to compute technical indicators. Try another symbol.")
                     st.stop()
                 
-                # Step 3: Train and predict
-                progress.progress(1.0)
+                status.markdown("🔄 Training LSTM model...")
                 X_lstm_test, y_lstm_test = predictor.train_models()
                 if X_lstm_test is None:
+                    status.empty()
                     st.error("Failed to train LSTM model. Data may be insufficient.")
                     st.stop()
                 
+                status.markdown("🔄 Generating prediction...")
                 lstm_pred = predictor.predict(X_lstm_test)
                 if lstm_pred is None:
+                    status.empty()
                     st.error("Prediction failed. Check data or try again.")
                     st.stop()
                 
                 y_test_inv = predictor.scaler.inverse_transform(y_lstm_test[:, -1].reshape(-1, 1)).flatten()
                 if len(y_test_inv) == 0:
+                    status.empty()
                     st.error("No valid test data for evaluation.")
                     st.stop()
                 
@@ -220,34 +308,92 @@ if st.button("Predict"):
                     lstm_rmse = float('nan')
                 
                 # Display results
-                st.success("Prediction completed!")
-                st.subheader("Stock Price Information")
-                st.write(f"**Last Actual Closing Price**: ${last_actual_price:.2f}")
-                st.write(f"**1-Day-Ahead LSTM Prediction**: ${lstm_pred[-1]:.2f}")
+                status.empty()
+                st.success("Prediction completed! 🎉")
                 
-                st.subheader("Model Performance (RMSE)")
-                if np.isnan(lstm_rmse):
-                    st.write("**LSTM**: Unable to compute")
-                else:
-                    st.write(f"**LSTM**: {lstm_rmse:.2f}")
+                st.markdown("### Stock Price Information")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(
+                        f"""
+                        <div class="price-card">
+                            <h3>Last Actual Closing Price</h3>
+                            <p>${last_actual_price:.2f}</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                with col2:
+                    st.markdown(
+                        f"""
+                        <div class="price-card">
+                            <h3>1-Day-Ahead Prediction</h3>
+                            <p>${lstm_pred[-1]:.2f}</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                
+                st.markdown("### Model Performance")
+                st.markdown(
+                    f"""
+                    <div class="price-card">
+                        <h3>LSTM RMSE</h3>
+                        <p>{'Unable to compute' if np.isnan(lstm_rmse) else f'{lstm_rmse:.2f}'}</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
                 
                 # Plot
-                st.subheader("Actual vs. Predicted Prices")
+                st.markdown("### Actual vs. Predicted Prices")
                 fig = plt.figure(figsize=(10, 5))
                 plt.plot(predictor.data.index[-len(y_test_inv):], y_test_inv, label='Actual', linewidth=2, color='blue')
                 plt.plot(predictor.data.index[-len(y_test_inv):], lstm_pred, label='LSTM Prediction', linewidth=2, linestyle='--', color='orange')
-                plt.title(f'{symbol} Stock Price Prediction (1-Day Ahead)')
-                plt.xlabel('Date')
-                plt.ylabel('Price')
-                plt.legend()
+                plt.title(f'{symbol} Stock Price Prediction (1-Day Ahead)', fontsize=14, color='#003087')
+                plt.xlabel('Date', fontsize=12)
+                plt.ylabel('Price ($)', fontsize=12)
+                plt.legend(fontsize=10)
                 plt.xticks(rotation=45)
+                plt.grid(True, linestyle='--', alpha=0.7)
                 plt.tight_layout()
                 st.pyplot(fig)
                 
             except Exception as e:
-                st.error(f"Error: {str(e)}. Check your API key, symbol, or try again later.")
+                status.empty()
+                if "rate limit" in str(e).lower():
+                    st.warning("Alpha Vantage API rate limit reached (5 requests/min). Please wait a minute and try again.")
+                else:
+                    st.error(f"Error: {str(e)}. Check your API key, symbol, or try again later.")
                 logging.error(f"General error: {str(e)}")
 
-st.markdown("""
-**Note**: This app uses the Alpha Vantage API (free tier: 5 requests/min). Predictions may take a few minutes due to model training.
-""")
+# Sidebar help
+with st.sidebar:
+    st.markdown("### About")
+    st.markdown("This app uses AI to predict stock prices one day ahead. Powered by LSTM models and Alpha Vantage data.")
+    
+    with st.expander("Help & FAQ"):
+        st.markdown("""
+        **How to get an API key?**
+        - Visit [alphavantage.co](https://www.alphavantage.co) and sign up for a free key.
+        
+        **What symbols are valid?**
+        - Use stock tickers like MSFT (Microsoft), NVDA (NVIDIA), or AAPL (Apple).
+        
+        **Why does it take a few minutes?**
+        - The app fetches fresh data and trains an LSTM model, which takes ~1–3 minutes.
+        
+        **Error messages?**
+        - **Invalid symbol**: Check the ticker (e.g., MSFT, not Microsoft).
+        - **Rate limit**: Wait a minute due to Alpha Vantage’s 5 requests/min limit.
+        - **Other errors**: Ensure your API key is correct or try again later.
+        """)
+
+st.markdown(
+    """
+    <div style='text-align: center; color: #666; margin-top: 20px;'>
+        Powered by Alpha Vantage API. Free tier limited to 5 requests/min.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
