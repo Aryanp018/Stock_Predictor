@@ -93,11 +93,24 @@ st.markdown("""
     }
     /* Sidebar */
     .stSidebar {
-        background-color: #F5F6F5;
+        background-color: #E8ECEF;
         border-right: 1px solid #003087;
     }
     .stSidebar h3 {
         color: #003087;
+        font-size: 1.5em;
+    }
+    .stSidebar .stMarkdown {
+        color: #333 !important;
+        font-size: 1.1em;
+    }
+    .stSidebar .stExpander {
+        background-color: #FFFFFF;
+        border: 1px solid #003087;
+        border-radius: 8px;
+    }
+    .stSidebar .stExpander > div > div > div {
+        color: #333 !important;
     }
     /* Alerts */
     .stAlert {
