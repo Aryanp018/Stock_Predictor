@@ -43,10 +43,10 @@ class StockPredictor:
                 })
                 data = data.sort_index()
                 data = data.loc['2015-01-01':datetime.today().strftime('%Y-%m-%d')]
-                if data.empty or len(data) < self.look_back:
-                    raise ValueError(f"Insufficient data for {self.stock_symbol} (got {len(data)} rows)")
+                if data.empty or len(data) < self.look_back + 50:  # Ensure enough data
+                    raise ValueError(f"Insufficient data for {self.stock_symbol}: {len(data)} rows")
                 self.data = data
-                logging.info(f"Successfully downloaded {len(data)} rows for {self.stock_symbol}")
+                logging.info(f"Fetched {len(data)} rows for {self.stock_symbol}")
                 return True
             except Exception as e:
                 retries += 1
@@ -69,20 +69,24 @@ class StockPredictor:
             df['BB_middle'] = bb.bollinger_mavg()
             df['BB_lower'] = bb.bollinger_lband()
             df = df.dropna()
-            if df.empty or len(df) < self.look_back:
-                logging.error(f"Technical indicators left insufficient data: {len(df)} rows")
+            if df.empty or len(df) < self.look_back + 10:
+                logging.error(f"After indicators, insufficient data: {len(df)} rows")
                 return False
             self.data = df
-            logging.info(f"Added indicators, {len(df)} rows remain")
+            logging.info(f"Indicators added, {len(df)} rows remain")
             return True
         except Exception as e:
             logging.error(f"Error adding indicators: {str(e)}")
             return False
 
     def prepare_lstm_data(self):
-        if self.data is None or len(self.data) < self.look_back:
+        if self.data is None or len(self.data) < self.look_back + 10:
+            logging.error("Not enough data for LSTM")
             return None, None, None, None, None
         prices = self.data['Close'].values
+        if np.any(np.isnan(prices)):
+            logging.error("NaN values in Close prices")
+            return None, None, None, None, None
         scaled_data = self.scaler.fit_transform(prices.reshape(-1, 1))
         
         X, y = [], []
@@ -95,6 +99,9 @@ class StockPredictor:
             logging.error("Empty LSTM data arrays")
             return None, None, None, None, None
         train_size = int(len(X) * 0.8)
+        if train_size < 10:
+            logging.error("Training data too small")
+            return None, None, None, None, None
         return (X[:train_size], y[:train_size], 
                 X[train_size:], y[train_size:], scaled_data)
 
@@ -113,6 +120,7 @@ class StockPredictor:
 
     def train_models(self):
         if self.data is None:
+            logging.error("No data to train models")
             return None, None, None, None
             
         import tensorflow as tf
@@ -124,11 +132,16 @@ class StockPredictor:
         features = ['Close', 'RSI', 'MA20', 'MA50', 'BB_upper', 'BB_lower']
         X_lstm_train, y_lstm_train, X_lstm_test, y_lstm_test, scaled_data = self.prepare_lstm_data()
         if X_lstm_train is None:
+            logging.error("Failed to prepare LSTM data")
             return None, None, None, None
         
-        self.models['lstm'] = self.create_lstm_model()
-        self.models['lstm'].fit(X_lstm_train, y_lstm_train, epochs=20, 
-                              batch_size=32, validation_split=0.1, verbose=0)
+        try:
+            self.models['lstm'] = self.create_lstm_model()
+            self.models['lstm'].fit(X_lstm_train, y_lstm_train, epochs=20, 
+                                  batch_size=32, validation_split=0.1, verbose=0)
+        except Exception as e:
+            logging.error(f"LSTM training failed: {str(e)}")
+            return None, None, None, None
         
         X = self.data[features].values
         y = self.data['Close'].shift(-self.prediction_days).values
@@ -140,27 +153,47 @@ class StockPredictor:
         
         total_samples = len(scaled_data) - self.look_back - self.prediction_days + 1
         train_size = int(total_samples * 0.8)
+        if train_size < 10:
+            logging.error("RF training data too small")
+            return None, None, None, None
         
         rf_scaler = MinMaxScaler()
-        X_scaled = rf_scaler.fit_transform(X)
+        try:
+            X_scaled = rf_scaler.fit_transform(X)
+        except Exception as e:
+            logging.error(f"RF scaling failed: {str(e)}")
+            return None, None, None, None
         
         X_train, X_test = X_scaled[:train_size], X_scaled[train_size:train_size + len(X_lstm_test)]
         y_train, y_test = y[:train_size], y[train_size:train_size + len(X_lstm_test)]
+        if X_train.size == 0 or y_train.size == 0:
+            logging.error("Empty RF training data")
+            return None, None, None, None
         
-        self.models['rf'] = RandomForestRegressor(n_estimators=200, max_depth=10, random_state=42)
-        self.models['rf'].fit(X_train, y_train)
+        try:
+            self.models['rf'] = RandomForestRegressor(n_estimators=200, max_depth=10, random_state=42)
+            self.models['rf'].fit(X_train, y_train)
+        except Exception as e:
+            logging.error(f"RF training failed: {str(e)}")
+            return None, None, None, None
         
         return X_lstm_test, y_lstm_test, X_test, y_test
 
     def predict(self, X_lstm_test, X_test):
         if X_lstm_test is None or X_test is None:
+            logging.error("Invalid prediction inputs")
             return None, None
-        lstm_pred = self.models['lstm'].predict(X_lstm_test, verbose=0)
-        rf_pred = self.models['rf'].predict(X_test)
-        
-        lstm_pred_inv = self.scaler.inverse_transform(lstm_pred[:, -1].reshape(-1, 1))
-        lstm_pred_inv = lstm_pred_inv.flatten()
-        
+        try:
+            lstm_pred = self.models['lstm'].predict(X_lstm_test, verbose=0)
+            lstm_pred_inv = self.scaler.inverse_transform(lstm_pred[:, -1].reshape(-1, 1)).flatten()
+        except Exception as e:
+            logging.error(f"LSTM prediction failed: {str(e)}")
+            return None, None
+        try:
+            rf_pred = self.models['rf'].predict(X_test)
+        except Exception as e:
+            logging.error(f"RF prediction failed: {str(e)}")
+            return None, None
         return lstm_pred_inv, rf_pred
 
 # Streamlit UI
@@ -198,7 +231,7 @@ if st.button("Predict"):
                 # Step 2: Add indicators
                 progress.progress(0.5)
                 if not predictor.add_technical_indicators():
-                    st.error("Failed to compute technical indicators.")
+                    st.error("Failed to compute technical indicators. Try another symbol.")
                     st.stop()
                 
                 # Step 3: Train models
@@ -223,8 +256,12 @@ if st.button("Predict"):
                 # Calculate RMSE
                 rmse_results = {}
                 for name, pred in [('LSTM', lstm_pred), ('RF', rf_pred)]:
-                    rmse = np.sqrt(mean_squared_error(y_test_inv, pred))
-                    rmse_results[name] = rmse
+                    try:
+                        rmse = np.sqrt(mean_squared_error(y_test_inv, pred))
+                        rmse_results[name] = rmse
+                    except Exception as e:
+                        logging.error(f"RMSE calculation failed for {name}: {str(e)}")
+                        rmse_results[name] = float('nan')
                 
                 # Display results
                 st.success("Prediction completed!")
@@ -234,14 +271,17 @@ if st.button("Predict"):
                 
                 st.subheader("Model Performance (RMSE)")
                 for name, rmse in rmse_results.items():
-                    st.write(f"**{name}**: {rmse:.2f}")
+                    if np.isnan(rmse):
+                        st.write(f"**{name}**: Unable to compute")
+                    else:
+                        st.write(f"**{name}**: {rmse:.2f}")
                 
                 # Plot
                 st.subheader("Prediction vs. Actual Prices")
                 fig = plt.figure(figsize=(10, 5))
-                plt.plot(predictor.data.index[-len(y_test):], y_test_inv, label='Actual')
-                plt.plot(predictor.data.index[-len(y_test):], lstm_pred, label='LSTM')
-                plt.plot(predictor.data.index[-len(y_test):], rf_pred, label='Random Forest')
+                plt.plot(predictor.data.index[-len(y_test):], y_test_inv, label='Actual', linewidth=2)
+                plt.plot(predictor.data.index[-len(y_test):], lstm_pred, label='LSTM', linestyle='--')
+                plt.plot(predictor.data.index[-len(y_test):], rf_pred, label='Random Forest', linestyle='--')
                 plt.title(f'{symbol} Stock Price Prediction (1-Day Ahead)')
                 plt.xlabel('Date')
                 plt.ylabel('Price')
@@ -252,6 +292,7 @@ if st.button("Predict"):
                 
             except Exception as e:
                 st.error(f"Error: {str(e)}. Check your API key, symbol, or try again later.")
+                logging.error(f"General error: {str(e)}")
 
 st.markdown("""
 **Note**: This app uses the Alpha Vantage API (free tier: 5 requests/min). Predictions may take a few minutes due to model training.
