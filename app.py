@@ -20,11 +20,12 @@ st.markdown("""
     <style>
     /* General styling */
     body {
-        background-color: #F5F6F5;
+        background-color: #FFFFFF;
     }
     .stApp {
         max-width: 1200px;
         margin: 0 auto;
+        background-color: #FFFFFF;
     }
     h1 {
         color: #003087;
@@ -37,6 +38,7 @@ st.markdown("""
         font-size: 1.8em;
         border-bottom: 2px solid #28A745;
         padding-bottom: 0.2em;
+        margin-top: 1em;
     }
     /* Input form */
     .stTextInput > div > div > input {
@@ -53,13 +55,15 @@ st.markdown("""
         font-size: 1.2em;
         border: none;
         transition: background-color 0.3s;
+        display: block;
+        margin: 1em auto;
     }
     .stButton > button:hover {
         background-color: #218838;
     }
     /* Output cards */
     .price-card {
-        background-color: white;
+        background-color: #F5F6F5;
         border: 1px solid #003087;
         border-radius: 8px;
         padding: 15px;
@@ -80,7 +84,7 @@ st.markdown("""
     }
     /* Plot */
     .plot-container {
-        background-color: white;
+        background-color: #FFFFFF;
         border: 1px solid #003087;
         border-radius: 8px;
         padding: 15px;
@@ -89,7 +93,7 @@ st.markdown("""
     }
     /* Sidebar */
     .stSidebar {
-        background-color: #FFFFFF;
+        background-color: #F5F6F5;
         border-right: 1px solid #003087;
     }
     .stSidebar h3 {
@@ -99,6 +103,13 @@ st.markdown("""
     .stAlert {
         border-radius: 8px;
         font-size: 1.1em;
+    }
+    /* Status messages */
+    .status-message {
+        text-align: center;
+        font-size: 1.2em;
+        color: #003087;
+        margin: 1em 0;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -248,11 +259,11 @@ st.markdown("Predict tomorrow's stock price with advanced AI. Enter a symbol and
 
 # Input form
 st.markdown("### Enter Stock Details")
-col1, col2 = st.columns(2)
+col1, col2 = st.columns([1, 1])
 with col1:
-    symbol = st.text_input("Stock Symbol", value="MSFT", help="e.g., MSFT, NVDA, AAPL")
+    symbol = st.text_input("Stock Symbol", value="MSFT", placeholder="e.g., MSFT, NVDA", help="Enter a valid stock ticker (e.g., MSFT for Microsoft)")
 with col2:
-    api_key = st.text_input("Alpha Vantage API Key", type="password", help="Get a free key at alphavantage.co")
+    api_key = st.text_input("Alpha Vantage API Key", type="password", placeholder="Enter your API key", help="Get a free key at alphavantage.co")
 
 # Predict button
 if st.button("Predict", key="predict_button"):
@@ -263,28 +274,28 @@ if st.button("Predict", key="predict_button"):
             try:
                 # Progress messages
                 status = st.empty()
-                status.markdown("🔄 Fetching stock data...")
+                status.markdown("<div class='status-message'>🔄 Fetching stock data...</div>", unsafe_allow_html=True)
                 predictor = StockPredictor(symbol, api_key, prediction_days=1)
                 
                 if not predictor.get_stock_data():
                     status.empty()
-                    st.error(f"Failed to fetch data for {symbol}. Check symbol or API key.")
+                    st.error(f"Failed to fetch data for {symbol}. Check if the symbol is valid (e.g., MSFT).")
                     st.stop()
                 
-                status.markdown("🔄 Computing technical indicators...")
+                status.markdown("<div class='status-message'>🔄 Computing technical indicators...</div>", unsafe_allow_html=True)
                 if not predictor.add_technical_indicators():
                     status.empty()
                     st.error("Failed to compute technical indicators. Try another symbol.")
                     st.stop()
                 
-                status.markdown("🔄 Training LSTM model...")
+                status.markdown("<div class='status-message'>🔄 Training LSTM model...</div>", unsafe_allow_html=True)
                 X_lstm_test, y_lstm_test = predictor.train_models()
                 if X_lstm_test is None:
                     status.empty()
                     st.error("Failed to train LSTM model. Data may be insufficient.")
                     st.stop()
                 
-                status.markdown("🔄 Generating prediction...")
+                status.markdown("<div class='status-message'>🔄 Generating prediction...</div>", unsafe_allow_html=True)
                 lstm_pred = predictor.predict(X_lstm_test)
                 if lstm_pred is None:
                     status.empty()
@@ -299,6 +310,7 @@ if st.button("Predict", key="predict_button"):
                 
                 # Get last actual price
                 last_actual_price = predictor.data['Close'][-1]
+                last_actual_date = predictor.data.index[-1].strftime('%Y-%m-%d')
                 
                 # Calculate RMSE
                 try:
@@ -312,13 +324,14 @@ if st.button("Predict", key="predict_button"):
                 st.success("Prediction completed! 🎉")
                 
                 st.markdown("### Stock Price Information")
-                col1, col2 = st.columns(2)
+                col1, col2 = st.columns([1, 1])
                 with col1:
                     st.markdown(
                         f"""
                         <div class="price-card">
                             <h3>Last Actual Closing Price</h3>
                             <p>${last_actual_price:.2f}</p>
+                            <p style="font-size: 0.9em; color: #666;">({last_actual_date})</p>
                         </div>
                         """,
                         unsafe_allow_html=True
@@ -329,6 +342,7 @@ if st.button("Predict", key="predict_button"):
                         <div class="price-card">
                             <h3>1-Day-Ahead Prediction</h3>
                             <p>${lstm_pred[-1]:.2f}</p>
+                            <p style="font-size: 0.9em; color: #666;">(LSTM Model)</p>
                         </div>
                         """,
                         unsafe_allow_html=True
