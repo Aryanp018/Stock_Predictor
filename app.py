@@ -28,17 +28,27 @@ st.markdown("""
         background-color: #FFFFFF;
     }
     h1 {
-        color: #003087;
+        color: #003087 !important;
         font-size: 2.5em;
         text-align: center;
         margin-bottom: 0.5em;
     }
     h2 {
-        color: #003087;
+        color: #003087 !important;
         font-size: 1.8em;
         border-bottom: 2px solid #28A745;
         padding-bottom: 0.2em;
         margin-top: 1em;
+    }
+    /* Main page text */
+    .stMarkdown, .stMarkdown p, .stMarkdown div {
+        color: #333 !important;
+        font-size: 1.1em;
+    }
+    .stTextInput > div > div > div > label {
+        color: #003087 !important;
+        font-size: 1.1em;
+        font-weight: bold;
     }
     /* Input form */
     .stTextInput > div > div > input {
@@ -49,7 +59,7 @@ st.markdown("""
     }
     .stButton > button {
         background-color: #28A745;
-        color: white;
+        color: white !important;
         border-radius: 8px;
         padding: 12px 24px;
         font-size: 1.2em;
@@ -72,15 +82,19 @@ st.markdown("""
         text-align: center;
     }
     .price-card h3 {
-        color: #003087;
+        color: #003087 !important;
         margin: 0;
         font-size: 1.4em;
     }
     .price-card p {
-        color: #333;
+        color: #333 !important;
         font-size: 1.6em;
         margin: 5px 0 0;
         font-weight: bold;
+    }
+    .price-card p:last-child {
+        font-size: 0.9em;
+        color: #666 !important;
     }
     /* Plot */
     .plot-container {
@@ -97,7 +111,7 @@ st.markdown("""
         border-right: 1px solid #003087;
     }
     .stSidebar h3 {
-        color: #003087;
+        color: #003087 !important;
         font-size: 1.5em;
     }
     .stSidebar .stMarkdown {
@@ -113,15 +127,31 @@ st.markdown("""
         color: #333 !important;
     }
     /* Alerts */
-    .stAlert {
+    .stAlert[role="alert"] {
         border-radius: 8px;
         font-size: 1.1em;
+    }
+    /* Success banner */
+    .stAlert[role="alert"] {
+        background-color: #C3E6CB !important;
+    }
+    .stAlert[role="alert"] div {
+        color: #333 !important;
+        font-size: 1.2em;
+        font-weight: bold;
+    }
+    /* Warning and error banners */
+    .stAlert[role="alert"][style*="background-color: rgb(255, 243, 205)"] div {
+        color: #333 !important;
+    }
+    .stAlert[role="alert"][style*="background-color: rgb(248, 215, 218)"] div {
+        color: #333 !important;
     }
     /* Status messages */
     .status-message {
         text-align: center;
         font-size: 1.2em;
-        color: #003087;
+        color: #003087 !important;
         margin: 1em 0;
     }
     </style>
