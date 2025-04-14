@@ -1,0 +1,8 @@
+numpy
+pandas
+scikit-learn
+tensorflow
+matplotlib
+ta
+alpha-vantage
+streamlit
