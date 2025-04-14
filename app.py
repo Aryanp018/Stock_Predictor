@@ -34,12 +34,15 @@ st.markdown("""
         margin-bottom: 0.5em;
     }
     h2 {
-        color: #003087 !important;
-        font-size: 1.8em;
-        border-bottom: 2px solid #28A745;
-        padding-bottom: 0.2em;
-        margin-top: 1em;
-    }
+    color: #000000 !important;
+    font-size: 1.8em;
+    border-bottom: 2px solid #28A745;
+    padding-bottom: 0.2em;
+    margin-top: 1em;
+}
+h2:hover {
+    color: #000000 !important;
+}
     /* Prevent hover effects from changing text visibility */
     h1:hover, h2:hover, .stMarkdown:hover, .stMarkdown p:hover, .stMarkdown div:hover {
         color: inherit !important;
